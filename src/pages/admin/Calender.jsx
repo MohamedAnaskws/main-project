@@ -7,8 +7,6 @@ import {
   UserOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  CalendarOutlined,
-  RocketOutlined,
   GiftOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
@@ -79,6 +77,7 @@ export default function AdminCalendar() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: {
           Authorization: `Bearer ${getToken()}`,
+          "ngrok-skip-browser-warning": "true",
         },
       });
       const data = await res.json();
@@ -98,6 +97,7 @@ export default function AdminCalendar() {
         {
           headers: {
             Authorization: `Bearer ${getToken()}`,
+            "ngrok-skip-browser-warning": "true",
           },
         }
       );

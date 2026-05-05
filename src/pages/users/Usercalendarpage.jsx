@@ -47,13 +47,33 @@ const { Step } = Steps;
 const getStepInfo = (step) => {
   switch (step) {
     case 1:
-      return { name: "Department Manager", color: "#1890ff", icon: "👔", description: "Waiting for Department Manager approval" };
+      return {
+        name: "Department Manager",
+        color: "#1890ff",
+        icon: "👔",
+        description: "Waiting for Department Manager approval",
+      };
     case 2:
-      return { name: "Manager", color: "#52c41a", icon: "💼", description: "Waiting for Manager approval" };
+      return {
+        name: "Manager",
+        color: "#52c41a",
+        icon: "💼",
+        description: "Waiting for Manager approval",
+      };
     case 3:
-      return { name: "Owner", color: "#fa8c16", icon: "👑", description: "Waiting for Owner approval" };
+      return {
+        name: "Owner",
+        color: "#fa8c16",
+        icon: "👑",
+        description: "Waiting for Owner approval",
+      };
     default:
-      return { name: "Unknown", color: "#999", icon: "❓", description: "Unknown step" };
+      return {
+        name: "Unknown",
+        color: "#999",
+        icon: "❓",
+        description: "Unknown step",
+      };
   }
 };
 
@@ -96,27 +116,28 @@ const UserCalendar = () => {
     () => ({
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
+      "ngrok-skip-browser-warning": "true",
       "Content-Type": "application/json",
     }),
-    [token]
+    [token],
   );
 
   // ================= FETCH WORK SCHEDULE =================
   const fetchWorkSchedule = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
-    
+
     try {
       const monthYear = currentMonth.format("YYYY-MM-01");
-      
+
       const endpoints = [
         `${BASE}/api/work-schedule/user/${user.id}?month_year=${monthYear}`,
         `${BASE}/api/work-schedule/${user.id}?month_year=${monthYear}`,
         `${BASE}/api/work-schedule?user_id=${user.id}&month_year=${monthYear}`,
       ];
-      
+
       let scheduleData = null;
-      
+
       for (const endpoint of endpoints) {
         try {
           const res = await fetch(endpoint, { headers });
@@ -134,7 +155,7 @@ const UserCalendar = () => {
           continue;
         }
       }
-      
+
       if (scheduleData) {
         setWorkSchedule(scheduleData);
       } else {
@@ -205,7 +226,7 @@ const UserCalendar = () => {
   // ================= WORK SCHEDULE MAP =================
   const workScheduleMap = useMemo(() => {
     const map = new Map();
-    
+
     if (workSchedule?.details) {
       workSchedule.details.forEach((detail) => {
         map.set(detail.work_date, {
@@ -221,7 +242,7 @@ const UserCalendar = () => {
         });
       });
     }
-    
+
     return map;
   }, [workSchedule]);
 
@@ -284,23 +305,39 @@ const UserCalendar = () => {
 
   // ================= STATUS =================
   const getStatus = (status) => {
-    if (status === "APPROVED") return { color: "#52c41a", text: "Approved", icon: <CheckCircleOutlined /> };
-    if (status === "REJECTED") return { color: "#ff4d4f", text: "Rejected", icon: <CloseCircleOutlined /> };
+    if (status === "APPROVED")
+      return {
+        color: "#52c41a",
+        text: "Approved",
+        icon: <CheckCircleOutlined />,
+      };
+    if (status === "REJECTED")
+      return {
+        color: "#ff4d4f",
+        text: "Rejected",
+        icon: <CloseCircleOutlined />,
+      };
     return { color: "#faad14", text: "Pending", icon: <ClockCircleOutlined /> };
   };
 
   // ================= CALCULATE LEAVE STATISTICS =================
   const leaveStats = useMemo(() => {
-    const approved = leaves.filter(l => l.status === "APPROVED").length;
-    const pending = leaves.filter(l => l.status === "PENDING" || l.status === "pending").length;
-    const rejected = leaves.filter(l => l.status === "REJECTED" || l.status === "rejected").length;
+    const approved = leaves.filter((l) => l.status === "APPROVED").length;
+    const pending = leaves.filter(
+      (l) => l.status === "PENDING" || l.status === "pending",
+    ).length;
+    const rejected = leaves.filter(
+      (l) => l.status === "REJECTED" || l.status === "rejected",
+    ).length;
     return { approved, pending, rejected, total: leaves.length };
   }, [leaves]);
 
   // ================= CALENDAR DATE CELL RENDER =================
   const dateCellRender = (value) => {
     const dateStr = value.format("YYYY-MM-DD");
-    const dayLeaves = leaves.filter(l => l.leave_date === dateStr || l.from_date === dateStr);
+    const dayLeaves = leaves.filter(
+      (l) => l.leave_date === dateStr || l.from_date === dateStr,
+    );
     const holiday = holidayMap.get(dateStr);
     const schedule = workScheduleMap.get(dateStr);
     const isWorkScheduleHoliday = schedule?.isHoliday === true;
@@ -309,33 +346,65 @@ const UserCalendar = () => {
     return (
       <div style={{ minHeight: 80, padding: "4px 0" }}>
         <div style={{ fontWeight: 500, marginBottom: 4 }}>{value.date()}</div>
-        
+
         {schedule && !isWorkScheduleHoliday && canWork === true && (
-          <Tag color="#52c41a" style={{ fontSize: 10, borderRadius: 4, marginBottom: 4, marginRight: 0, display: "block", textAlign: "center" }}>
+          <Tag
+            color="#52c41a"
+            style={{
+              fontSize: 10,
+              borderRadius: 4,
+              marginBottom: 4,
+              marginRight: 0,
+              display: "block",
+              textAlign: "center",
+            }}
+          >
             ✅ Work
           </Tag>
         )}
-        
+
         {schedule && canWork === false && !isWorkScheduleHoliday && (
-          <Tag color="#fa8c16" style={{ fontSize: 10, borderRadius: 4, marginBottom: 4, marginRight: 0, display: "block", textAlign: "center" }}>
+          <Tag
+            color="#fa8c16"
+            style={{
+              fontSize: 10,
+              borderRadius: 4,
+              marginBottom: 4,
+              marginRight: 0,
+              display: "block",
+              textAlign: "center",
+            }}
+          >
             🚫 Off
           </Tag>
         )}
-        
+
         {(isWorkScheduleHoliday || holiday) && (
-          <Tag color="#eb2f96" style={{ fontSize: 10, borderRadius: 4, marginBottom: 4, marginRight: 0, display: "block", textAlign: "center" }}>
+          <Tag
+            color="#eb2f96"
+            style={{
+              fontSize: 10,
+              borderRadius: 4,
+              marginBottom: 4,
+              marginRight: 0,
+              display: "block",
+              textAlign: "center",
+            }}
+          >
             🎉 {holiday?.holiday_name || "Holiday"}
           </Tag>
         )}
-        
+
         {dayLeaves.slice(0, 2).map((leave) => {
           const status = getStatus(leave.status);
           const categoryConfig = getLeaveCategoryConfig(leave.leave_category);
           const stepInfo = getStepInfo(leave.current_step);
-          
+
           return (
             <div key={leave.id} style={{ marginBottom: 4 }}>
-              <Tooltip title={`${leave.leave_category} - Step: ${stepInfo.name} - Click for details`}>
+              <Tooltip
+                title={`${leave.leave_category} - Step: ${stepInfo.name} - Click for details`}
+              >
                 <Tag
                   style={{
                     marginBottom: 4,
@@ -355,14 +424,18 @@ const UserCalendar = () => {
                     setViewModalOpen(true);
                   }}
                 >
-                  {categoryConfig.icon} {leave.leave_category} ({stepInfo.icon} {stepInfo.name})
+                  {categoryConfig.icon} {leave.leave_category} ({stepInfo.icon}{" "}
+                  {stepInfo.name})
                 </Tag>
               </Tooltip>
             </div>
           );
         })}
         {dayLeaves.length > 2 && (
-          <Text type="secondary" style={{ fontSize: 10, display: "block", textAlign: "center" }}>
+          <Text
+            type="secondary"
+            style={{ fontSize: 10, display: "block", textAlign: "center" }}
+          >
             +{dayLeaves.length - 2} more
           </Text>
         )}
@@ -390,16 +463,19 @@ const UserCalendar = () => {
               Manage your leave requests and view your work schedule
             </Text>
           </Col>
-       
         </Row>
 
         {/* Work Schedule Summary */}
         {loading ? (
-          <Skeleton active paragraph={{ rows: 2 }} style={{ marginBottom: 24 }} />
+          <Skeleton
+            active
+            paragraph={{ rows: 2 }}
+            style={{ marginBottom: 24 }}
+          />
         ) : workSchedule ? (
-          <Card 
-            style={{ 
-              marginBottom: 24, 
+          <Card
+            style={{
+              marginBottom: 24,
               borderRadius: 12,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             }}
@@ -421,7 +497,11 @@ const UserCalendar = () => {
                   {workSchedule.total_work_days !== undefined && (
                     <Col xs={12} sm={8}>
                       <Statistic
-                        title={<span style={{ color: "#fff", opacity: 0.9 }}>Work Days</span>}
+                        title={
+                          <span style={{ color: "#fff", opacity: 0.9 }}>
+                            Work Days
+                          </span>
+                        }
                         value={workSchedule.total_work_days}
                         valueStyle={{ color: "#fff", fontSize: 24 }}
                       />
@@ -430,7 +510,11 @@ const UserCalendar = () => {
                   {workSchedule.total_off_days !== undefined && (
                     <Col xs={12} sm={8}>
                       <Statistic
-                        title={<span style={{ color: "#fff", opacity: 0.9 }}>Off Days</span>}
+                        title={
+                          <span style={{ color: "#fff", opacity: 0.9 }}>
+                            Off Days
+                          </span>
+                        }
                         value={workSchedule.total_off_days}
                         valueStyle={{ color: "#fff", fontSize: 24 }}
                       />
@@ -439,7 +523,11 @@ const UserCalendar = () => {
                   {workSchedule.total_holidays !== undefined && (
                     <Col xs={12} sm={8}>
                       <Statistic
-                        title={<span style={{ color: "#fff", opacity: 0.9 }}>Holidays</span>}
+                        title={
+                          <span style={{ color: "#fff", opacity: 0.9 }}>
+                            Holidays
+                          </span>
+                        }
                         value={workSchedule.total_holidays}
                         valueStyle={{ color: "#fff", fontSize: 24 }}
                       />
@@ -449,7 +537,13 @@ const UserCalendar = () => {
               </Col>
             </Row>
             {workSchedule.assigned_by_name && (
-              <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
+              <div
+                style={{
+                  marginTop: 16,
+                  paddingTop: 12,
+                  borderTop: "1px solid rgba(255,255,255,0.2)",
+                }}
+              >
                 <Text style={{ color: "#fff", fontSize: 12 }}>
                   <UserOutlined /> Assigned by: {workSchedule.assigned_by_name}
                 </Text>
@@ -467,8 +561,8 @@ const UserCalendar = () => {
         )}
 
         {/* Calendar Section */}
-        <Card 
-          style={{ 
+        <Card
+          style={{
             borderRadius: 12,
             boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
           }}
@@ -509,7 +603,7 @@ const UserCalendar = () => {
               style={{ borderRadius: 8 }}
             />
           </div>
-          
+
           <div style={{ marginBottom: 16 }}>
             <Text strong>Leave Type</Text>
             <Select
@@ -536,8 +630,6 @@ const UserCalendar = () => {
               style={{ marginTop: 8, borderRadius: 8 }}
             />
           </div>
-          
-        
         </Modal>
 
         {/* View Leave Modal with Current Step Highlight */}
@@ -562,26 +654,37 @@ const UserCalendar = () => {
             <div>
               <Row gutter={[16, 16]}>
                 <Col span={24}>
-                  <Card size="small" style={{ background: "#f5f5f5", borderRadius: 8 }}>
+                  <Card
+                    size="small"
+                    style={{ background: "#f5f5f5", borderRadius: 8 }}
+                  >
                     <Space>
-                      <Avatar 
-                        icon={<CalendarOutlined />} 
+                      <Avatar
+                        icon={<CalendarOutlined />}
                         style={{ backgroundColor: "#1890ff" }}
                       />
                       <div>
                         <Text type="secondary">Date</Text>
                         <div>
-                          <Text strong>{selectedLeave.leave_date || selectedLeave.from_date}</Text>
+                          <Text strong>
+                            {selectedLeave.leave_date ||
+                              selectedLeave.from_date}
+                          </Text>
                         </div>
                       </div>
                     </Space>
                   </Card>
                 </Col>
-                
+
                 <Col xs={24} sm={12}>
                   <Card size="small" style={{ borderRadius: 8 }}>
                     <Space>
-                      <span>{getLeaveCategoryConfig(selectedLeave.leave_category).icon}</span>
+                      <span>
+                        {
+                          getLeaveCategoryConfig(selectedLeave.leave_category)
+                            .icon
+                        }
+                      </span>
                       <div>
                         <Text type="secondary">Leave Type</Text>
                         <div>
@@ -591,7 +694,7 @@ const UserCalendar = () => {
                     </Space>
                   </Card>
                 </Col>
-                
+
                 <Col xs={24} sm={12}>
                   <Card size="small" style={{ borderRadius: 8 }}>
                     <Space>
@@ -599,8 +702,8 @@ const UserCalendar = () => {
                       <div>
                         <Text type="secondary">Status</Text>
                         <div>
-                          <Badge 
-                            color={getStatus(selectedLeave.status).color} 
+                          <Badge
+                            color={getStatus(selectedLeave.status).color}
                             text={getStatus(selectedLeave.status).text}
                           />
                         </div>
@@ -608,7 +711,7 @@ const UserCalendar = () => {
                     </Space>
                   </Card>
                 </Col>
-                
+
                 <Col span={24}>
                   <Card size="small" style={{ borderRadius: 8 }}>
                     <Space>
@@ -616,42 +719,64 @@ const UserCalendar = () => {
                       <div style={{ flex: 1 }}>
                         <Text type="secondary">Reason</Text>
                         <div>
-                          <Text>{selectedLeave.reason || "No reason provided"}</Text>
+                          <Text>
+                            {selectedLeave.reason || "No reason provided"}
+                          </Text>
                         </div>
                       </div>
                     </Space>
                   </Card>
                 </Col>
-                
+
                 {/* Current Step Section - Highlighted */}
                 <Col span={24}>
-                  <Card 
-                    size="small" 
-                    style={{ 
-                      borderRadius: 8, 
-                      background: "linear-gradient(135deg, #f0f5ff 0%, #e6f4ff 100%)",
-                      border: `2px solid ${getStepInfo(selectedLeave.current_step).color}`
+                  <Card
+                    size="small"
+                    style={{
+                      borderRadius: 8,
+                      background:
+                        "linear-gradient(135deg, #f0f5ff 0%, #e6f4ff 100%)",
+                      border: `2px solid ${getStepInfo(selectedLeave.current_step).color}`,
                     }}
                   >
                     <Space direction="vertical" style={{ width: "100%" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
                         <Space>
-                          <UserOutlined style={{ color: getStepInfo(selectedLeave.current_step).color, fontSize: 18 }} />
-                          <Text strong style={{ color: getStepInfo(selectedLeave.current_step).color }}>
+                          <UserOutlined
+                            style={{
+                              color: getStepInfo(selectedLeave.current_step)
+                                .color,
+                              fontSize: 18,
+                            }}
+                          />
+                          <Text
+                            strong
+                            style={{
+                              color: getStepInfo(selectedLeave.current_step)
+                                .color,
+                            }}
+                          >
                             Current Approval Step
                           </Text>
                         </Space>
-                        <Tag 
+                        <Tag
                           color={getStepInfo(selectedLeave.current_step).color}
                           style={{ fontSize: 14, padding: "4px 12px" }}
                         >
-                          {getStepInfo(selectedLeave.current_step).icon} Step {selectedLeave.current_step}
+                          {getStepInfo(selectedLeave.current_step).icon} Step{" "}
+                          {selectedLeave.current_step}
                         </Tag>
                       </div>
-                      
+
                       <div style={{ marginTop: 8 }}>
-                        <Steps 
-                          current={selectedLeave.current_step - 1} 
+                        <Steps
+                          current={selectedLeave.current_step - 1}
                           size="small"
                           items={[
                             {
@@ -672,10 +797,18 @@ const UserCalendar = () => {
                           ]}
                         />
                       </div>
-                      
-                      <div style={{ marginTop: 12, padding: 8, background: "#fff", borderRadius: 6 }}>
+
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: 8,
+                          background: "#fff",
+                          borderRadius: 6,
+                        }}
+                      >
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                          <InfoCircleOutlined /> {getStepInfo(selectedLeave.current_step).description}
+                          <InfoCircleOutlined />{" "}
+                          {getStepInfo(selectedLeave.current_step).description}
                         </Text>
                       </div>
                     </Space>

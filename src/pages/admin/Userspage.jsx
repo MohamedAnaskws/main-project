@@ -47,6 +47,7 @@ function UsersPage() {
       const res = await fetch(`${BASE}/api/roles`, {
         headers: {
           Authorization: `Bearer ${getToken()}`,
+          "ngrok-skip-browser-warning": "true",
         },
       });
 
@@ -91,7 +92,7 @@ function UsersPage() {
         message.success(
           editingUser
             ? "User updated successfully ✅"
-            : "User created successfully ✅"
+            : "User created successfully ✅",
         );
 
         setOpen(false);

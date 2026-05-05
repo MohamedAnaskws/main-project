@@ -44,6 +44,7 @@ const BASE = import.meta.env.VITE_API_URL;
 const getHeaders = () => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${getToken()}`,
+  "ngrok-skip-browser-warning": "true",
   "user-id": 1,
 });
 
@@ -88,10 +89,9 @@ function DepartmentsPage() {
   const loadModules = useCallback(async (deptId) => {
     setModulesLoading(true);
     try {
-      const res = await fetch(
-        `${BASE}/api/departments/${deptId}/modules`,
-        { headers: getHeaders() }
-      );
+      const res = await fetch(`${BASE}/api/departments/${deptId}/modules`, {
+        headers: getHeaders(),
+      });
       const data = await res.json();
 
       setModules(Array.isArray(data) ? data : data.data || []);
@@ -107,7 +107,7 @@ function DepartmentsPage() {
     try {
       const res = await fetch(
         `${BASE}/departments/${deptId}/modules/${moduleId}`,
-        { headers: getHeaders() }
+        { headers: getHeaders() },
       );
 
       const data = await res.json();
@@ -162,7 +162,9 @@ function DepartmentsPage() {
         body: JSON.stringify(values),
       });
 
-      message.success(editing ? "Department updated ✅" : "Department created ✅");
+      message.success(
+        editing ? "Department updated ✅" : "Department created ✅",
+      );
       setOpen(false);
       setEditing(null);
       form.resetFields();
@@ -225,7 +227,7 @@ function DepartmentsPage() {
             name: moduleDetails.name,
             department_id: selectedDept,
           }),
-        }
+        },
       );
 
       message.success("Module updated ✅");
@@ -237,10 +239,13 @@ function DepartmentsPage() {
 
   const handleDeleteModule = async (moduleId) => {
     try {
-      await fetch(`${BASE}/api/departments/${selectedDept}/modules/${moduleId}`, {
-        method: "DELETE",
-        headers: getHeaders(),
-      });
+      await fetch(
+        `${BASE}/api/departments/${selectedDept}/modules/${moduleId}`,
+        {
+          method: "DELETE",
+          headers: getHeaders(),
+        },
+      );
 
       message.success("Module deleted ✅");
       loadModules(selectedDept);
@@ -260,7 +265,7 @@ function DepartmentsPage() {
     try {
       const uniqueActions = [
         ...new Set(actions.map((a) => a.toLowerCase().trim())),
-      ].filter(a => a);
+      ].filter((a) => a);
 
       for (let action of uniqueActions) {
         await fetch(`${BASE}/api/modules/${selectedModule}/actions`, {
@@ -334,7 +339,9 @@ function DepartmentsPage() {
           <AppstoreOutlined style={{ color: "#52c41a" }} />
           <Text>{text}</Text>
           {selectedModule === record.id && (
-            <Tag color="blue" style={{ marginLeft: 8 }}>Selected</Tag>
+            <Tag color="blue" style={{ marginLeft: 8 }}>
+              Selected
+            </Tag>
           )}
         </Space>
       ),
@@ -377,8 +384,17 @@ function DepartmentsPage() {
       ),
       children: (
         <div style={{ padding: "20px 0" }}>
-          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Title level={5} style={{ margin: 0 }}>All Departments</Title>
+          <div
+            style={{
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Title level={5} style={{ margin: 0 }}>
+              All Departments
+            </Title>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -391,7 +407,7 @@ function DepartmentsPage() {
               Add Department
             </Button>
           </div>
-          
+
           <Table
             dataSource={departments}
             columns={columns}
@@ -422,7 +438,10 @@ function DepartmentsPage() {
             />
           ) : (
             <>
-              <Card size="small" style={{ marginBottom: 20, background: "#f0f5ff" }}>
+              <Card
+                size="small"
+                style={{ marginBottom: 20, background: "#f0f5ff" }}
+              >
                 <Row gutter={16} align="middle">
                   <Col flex="auto">
                     <Input
@@ -447,7 +466,11 @@ function DepartmentsPage() {
                 rowKey="id"
                 loading={modulesLoading}
                 pagination={false}
-                locale={{ emptyText: <Empty description="No modules found for this department" /> }}
+                locale={{
+                  emptyText: (
+                    <Empty description="No modules found for this department" />
+                  ),
+                }}
               />
 
               {selectedModule && moduleDetails && (
@@ -461,7 +484,10 @@ function DepartmentsPage() {
                       </Space>
                     }
                     extra={
-                      <Button onClick={() => setSelectedModule(null)} type="link">
+                      <Button
+                        onClick={() => setSelectedModule(null)}
+                        type="link"
+                      >
                         Close
                       </Button>
                     }
@@ -481,7 +507,11 @@ function DepartmentsPage() {
                         />
                       </Col>
                       <Col span={4}>
-                        <Button type="primary" onClick={handleUpdateModule} block>
+                        <Button
+                          type="primary"
+                          onClick={handleUpdateModule}
+                          block
+                        >
                           <SaveOutlined /> Update
                         </Button>
                       </Col>
@@ -535,7 +565,9 @@ function DepartmentsPage() {
                 <Card
                   title="Module Actions"
                   extra={
-                    <Tag color="blue">{actions.filter(a => a).length} Actions</Tag>
+                    <Tag color="blue">
+                      {actions.filter((a) => a).length} Actions
+                    </Tag>
                   }
                 >
                   {actions.map((a, i) => (
@@ -548,7 +580,9 @@ function DepartmentsPage() {
                           setActions(arr);
                         }}
                         placeholder={`Action ${i + 1}`}
-                        prefix={<ThunderboltOutlined style={{ color: "#bfbfbf" }} />}
+                        prefix={
+                          <ThunderboltOutlined style={{ color: "#bfbfbf" }} />
+                        }
                       />
                     </div>
                   ))}
@@ -561,7 +595,7 @@ function DepartmentsPage() {
                       Add Action
                     </Button>
                     <Button
-                      onClick={() => setActions(actions.filter(a => a))}
+                      onClick={() => setActions(actions.filter((a) => a))}
                       icon={<CloseOutlined />}
                       danger
                     >
@@ -597,7 +631,9 @@ function DepartmentsPage() {
         title={
           <Space>
             <FolderOpenOutlined style={{ fontSize: 24, color: "#1890ff" }} />
-            <Title level={4} style={{ margin: 0 }}>Department Management</Title>
+            <Title level={4} style={{ margin: 0 }}>
+              Department Management
+            </Title>
           </Space>
         }
         bordered={false}
@@ -605,7 +641,10 @@ function DepartmentsPage() {
       >
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <Card size="small" style={{ background: "#fafafa", borderRadius: 8 }}>
+            <Card
+              size="small"
+              style={{ background: "#fafafa", borderRadius: 8 }}
+            >
               <Row align="middle" gutter={16}>
                 <Col>
                   <Text strong>Select Department:</Text>
@@ -665,7 +704,10 @@ function DepartmentsPage() {
             label="Department Name"
             rules={[
               { required: true, message: "Please enter department name" },
-              { min: 2, message: "Department name must be at least 2 characters" },
+              {
+                min: 2,
+                message: "Department name must be at least 2 characters",
+              },
             ]}
           >
             <Input

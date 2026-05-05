@@ -33,21 +33,30 @@ const WorkSchedulePage = () => {
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Fixed: 6 leave days per month TOTAL (including saturday and sunday)
+
   const [selectedLeaveCount, setSelectedLeaveCount] = useState(0);
   const [currentMonthKey, setCurrentMonthKey] = useState(dayjs().format("YYYY-MM"));
   const [holidayMap, setHolidayMap] = useState(new Map());
   const [holidayDetailsMap, setHolidayDetailsMap] = useState(new Map());
 
   const totalDaysInMonth = currentMonth.daysInMonth();
-  const maxLeaveDays = 6; // EXACTLY 6 leave days per month
+  const maxLeaveDays = 6; 
 
   // ================= API =================
-  const api = axios.create({ baseURL: BASE });
+    const api = axios.create({ 
+    baseURL: BASE,
+    headers: {
+      'ngrok-skip-browser-warning': 'true', 
+    }
+  });
 
   api.interceptors.request.use((config) => {
     const token = getToken();
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    config.headers['ngrok-skip-browser-warning'] = 'true';
     return config;
   });
 

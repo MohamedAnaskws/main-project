@@ -37,6 +37,7 @@ function SalaryProcessPage() {
           method: "GET",
           headers: {
             Authorization: `Bearer ${getToken()}`,
+            "ngrok-skip-browser-warning": "true",
             Accept: "application/json",
           },
         }
@@ -80,6 +81,7 @@ function SalaryProcessPage() {
           method: "POST",
           headers: {
             Authorization: `Bearer ${getToken()}`,
+            "ngrok-skip-browser-warning": "true",
             Accept: "application/json",
           },
         }

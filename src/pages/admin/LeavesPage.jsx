@@ -38,13 +38,20 @@ const CombinedApprovalsPage = () => {
       baseURL: BASE,
       headers: {
         Accept: "application/json",
+        "ngrok-skip-browser-warning": "true",
         "Content-Type": "application/json",
       },
     });
 
     instance.interceptors.request.use((config) => {
       const token = getToken();
-      if (token) config.headers.Authorization = `Bearer ${token}`;
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      config.headers["ngrok-skip-browser-warning"] = "true";
+
       return config;
     });
 

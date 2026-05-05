@@ -28,26 +28,22 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
   const loadPermissions = useCallback(async () => {
     try {
       // 🔹 ALL ACTIONS
-      const resAll = await fetch(
-        `${BASE}/api/users/me/group-by-department`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "user-id": 1,
-          },
-        }
-      );
+      const resAll = await fetch(`${BASE}/api/users/me/group-by-department`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "ngrok-skip-browser-warning": "true",
+          "user-id": 1,
+        },
+      });
       const allData = await resAll.json();
 
       // 🔹 ROLE ACTIONS
-      const resRole = await fetch(
-        `${BASE}/api/roles/${role.id}/permissions`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
+      const resRole = await fetch(`${BASE}/api/roles/${role.id}/permissions`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
       const roleData = await resRole.json();
 
       const roleActionIds = new Set();
@@ -105,7 +101,7 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
 
   const currentDept = useMemo(
     () => departments.find((d) => d.department_id === activeDept),
-    [departments, activeDept]
+    [departments, activeDept],
   );
 
   // ================= CHANGE =================
@@ -172,10 +168,7 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
           style={{ width: 260 }}
         >
           {departments.map((d) => (
-            <Select.Option
-              key={d.department_id}
-              value={d.department_id}
-            >
+            <Select.Option key={d.department_id} value={d.department_id}>
               {d.department_name}
             </Select.Option>
           ))}
@@ -191,9 +184,7 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
 
           const actions = modulePerms.__actions || [];
 
-          const selectedCount = actions.filter(
-            (a) => modulePerms[a]
-          ).length;
+          const selectedCount = actions.filter((a) => modulePerms[a]).length;
 
           return (
             <Panel
@@ -206,14 +197,11 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
                     {selectedCount}/{actions.length}
                   </Tag>
 
-                  {selectedCount === actions.length &&
-                    actions.length > 0 && (
-                      <Tag color="green">Full Access</Tag>
-                    )}
-
-                  {actions.length === 0 && (
-                    <Tag color="red">No Access</Tag>
+                  {selectedCount === actions.length && actions.length > 0 && (
+                    <Tag color="green">Full Access</Tag>
                   )}
+
+                  {actions.length === 0 && <Tag color="red">No Access</Tag>}
                 </Space>
               }
               extra={
@@ -238,7 +226,7 @@ function RolePermissionModal({ open, onCancel, onSave, role }) {
                           activeDept,
                           module.module_id,
                           action,
-                          e.target.checked
+                          e.target.checked,
                         )
                       }
                     >

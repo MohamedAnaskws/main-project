@@ -1,5 +1,11 @@
 import Cookies from "js-cookie";
 
+// ================= CHECK IF USING NGROK =================
+const isNgrok = (): boolean => {
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  return apiUrl.includes('ngrok');
+};
+
 // ================= SET AUTH =================
 export const setAuth = (data: { access_token: string; user: any }) => {
   const token = data.access_token;
@@ -40,6 +46,23 @@ export const getRoleId = (): number | null => {
 // ================= CHECK AUTH =================
 export const isAuthenticated = (): boolean => {
   return !!getToken();
+};
+
+// ================= GET AUTH HEADERS =================
+export const getAuthHeaders = (): HeadersInit => {
+  const token = getToken();
+  const headers: HeadersInit = {};
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Add ngrok header if needed
+  if (isNgrok()) {
+    headers['ngrok-skip-browser-warning'] = 'true';
+  }
+  
+  return headers;
 };
 
 // ================= LOGOUT =================
