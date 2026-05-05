@@ -32,7 +32,6 @@ import {
   UserOutlined,
   InfoCircleOutlined,
   FileTextOutlined,
-  SendOutlined,
 } from "@ant-design/icons";
 import MainLayout from "../../components/layout/MainLayout";
 import { getToken, getUser } from "../../utils/auth";

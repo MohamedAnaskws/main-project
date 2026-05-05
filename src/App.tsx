@@ -21,7 +21,7 @@ import CalendarPage from './pages/admin/Workschedulepage';
 import ChatLogsPage from './pages/admin/ChatLogsPage'; 
 
 // ── CRM User Pages ────────────────────────────────────
-import UserDashboard from './pages/users/Userspage';
+import UserDashboard from './pages/users/UserDashborad';
 import UserCalendar from './pages/users/Usercalendarpage';
 
 // ── Chat ──────────────────────────────────────────────
