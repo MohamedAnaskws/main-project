@@ -1,5 +1,3 @@
-// D:\Projects\full updated frontend\src\App.tsx
-
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
@@ -38,7 +36,7 @@ import { getToken, getUser } from './utils/auth';
 // ─────────────────────────────────────────────────────
 const ROLE_PERMISSIONS: Record<number, string[]> = {
   1: ['*'],
-  2: ['dashboard', 'users', 'departments', 'attendance', 'leaves', 'calendar', 'holidays', 'chat', 'employee-calendar'],
+  2: ['dashboard', 'users', 'departments', 'attendance', 'leaves', 'calendar', 'holidays', 'chat', 'employee-calendar', 'chat-logs'],
   3: ['dashboard', 'attendance', 'holidays', 'calendar', 'leaves', 'chat'],
   4: ['user-dashboard', 'user-calendar', 'chat'],
 };
@@ -57,7 +55,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; routeKey: string }> 
   children,
   routeKey,
 }) => {
-  if (!getToken()) return <Navigate to="/" replace />;
+  const token = getToken();
+  const user = getUser();
+  
+  if (!token || !user) return <Navigate to="/" replace />;
   if (!hasAccess(routeKey)) return <Navigate to="/home" replace />;
   return <>{children}</>;
 };
@@ -66,18 +67,60 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; routeKey: string }> 
 // App
 // ─────────────────────────────────────────────────────
 const App: React.FC = () => {
+  // Get auth state from store
+  const { loadUser, initialized, user, token } = useAuthStore();
+
+  // ONLY run this once on app start - but don't call API if we have cached data
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      useAuthStore.getState().loadUser();
-    } else {
-      useAuthStore.setState({ loading: false });
+    const hasToken = localStorage.getItem('access_token');
+    const hasUser = localStorage.getItem('user');
+    
+    console.log('🔍 App initializing...', { 
+      hasToken: !!hasToken, 
+      hasUser: !!hasUser,
+      storeHasUser: !!user,
+      storeHasToken: !!token,
+      initialized 
+    });
+    
+    // If we have both token and user in localStorage, sync store and skip API
+    if (hasToken && hasUser) {
+      try {
+        const userData = JSON.parse(hasUser);
+        console.log('✅ Using cached auth data from localStorage');
+        
+        // Sync store with cached data without calling API
+        useAuthStore.setState({ 
+          user: userData, 
+          token: hasToken, 
+          initialized: true, 
+          loading: false 
+        });
+        return;
+      } catch (e) {
+        console.error('Failed to parse cached user:', e);
+      }
     }
-  }, []);
+    
+    // Only call loadUser if we have token but no user in store
+    if (hasToken && !user && !initialized) {
+      console.log('🌐 Have token but no user in store, calling loadUser...');
+      loadUser();
+    } else if (!hasToken) {
+      // No token, mark as initialized
+      useAuthStore.setState({ loading: false, initialized: true });
+    } else if (user && token) {
+      // Already have user and token, mark as initialized
+      useAuthStore.setState({ initialized: true, loading: false });
+    }
+  }, []); // Empty dependency array - run once on mount
 
   const getRoleRedirect = () => {
-    if (!getToken()) return <Navigate to="/" />;
+    const token = getToken();
     const user = getUser();
+    
+    if (!token || !user) return <Navigate to="/" />;
+    
     switch (user?.roleid) {
       case 1:
       case 2:
@@ -112,7 +155,7 @@ const App: React.FC = () => {
         <Route path="/leavespage" element={<ProtectedRoute routeKey="leaves"><LeavesPage /></ProtectedRoute>} />
         <Route path="/employee-calendar" element={<ProtectedRoute routeKey="employee-calendar"><CalendarPage /></ProtectedRoute>} />
 
-        {/* 🆕 CHAT LOGS - Owner only */}
+        {/* CHAT LOGS - Admin only */}
         <Route path="/chat-logs" element={<ProtectedRoute routeKey="chat-logs"><ChatLogsPage /></ProtectedRoute>} />
 
         {/* ── User CRM ───────────────────────────── */}

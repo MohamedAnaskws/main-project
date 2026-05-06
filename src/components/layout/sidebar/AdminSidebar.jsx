@@ -18,6 +18,15 @@ function AdminSidebar({ collapsed }) {
 
   const [openKeys, setOpenKeys] = useState(["hr"]);
 
+  const handleMenuClick = (key) => {
+    if (key === '/chat') {
+
+      window.location.href = '/chat';
+    } else {
+      navigate(key);
+    }
+  };
+
   return (
     <div
       style={{
@@ -51,7 +60,6 @@ function AdminSidebar({ collapsed }) {
         </div>
       )}
 
-      {/* Optional: Show a mini logo when collapsed */}
       {collapsed && (
         <div
           style={{
@@ -79,7 +87,7 @@ function AdminSidebar({ collapsed }) {
         selectedKeys={[location.pathname]}
         openKeys={collapsed ? [] : openKeys}
         onOpenChange={setOpenKeys}
-        onClick={(e) => navigate(e.key)}
+        onClick={(e) => handleMenuClick(e.key)}  
         style={{
           background: "transparent",
           borderRight: "none",

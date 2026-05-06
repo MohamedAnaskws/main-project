@@ -22,6 +22,8 @@ function UserDashboard() {
   const [workingTime, setWorkingTime] = useState(0);
   const [breakTime, setBreakTime] = useState(0);
   const [attendanceData, setAttendanceData] = useState(null);
+  const [localBreakStart, setLocalBreakStart] = useState(null);
+  const [lastBreakTotal, setLastBreakTotal] = useState(0); // Store last break total
   
   const timerRef = useRef(null);
 
@@ -31,113 +33,177 @@ function UserDashboard() {
       const res = await getAttendance();
       const data = res?.data || res;
 
-      console.log("Loaded attendance data:", data); // Debug log
+      console.log("Loaded attendance data:", data);
 
-      setStatus(data?.status || "NOT_LOGGED_IN");
+      const newStatus = data?.status || "NOT_LOGGED_IN";
+      setStatus(newStatus);
       setAttendanceData(data);
       
       // Initialize times from server data
+      let totalWorking = 0;
+      let totalBreak = 0;
+      
       if (data?.totalWorkingTime !== undefined && data?.totalWorkingTime !== null) {
-        setWorkingTime(data.totalWorkingTime);
-      } else {
-        setWorkingTime(0);
+        totalWorking = data.totalWorkingTime;
       }
       
       if (data?.totalBreakTime !== undefined && data?.totalBreakTime !== null) {
-        setBreakTime(data.totalBreakTime);
-      } else {
-        setBreakTime(0);
+        totalBreak = data.totalBreakTime;
       }
+      
+      setWorkingTime(totalWorking);
+      setBreakTime(totalBreak);
+      setLastBreakTotal(totalBreak);
+      
+      // If status is BREAK, try to get break start time
+      if (newStatus === "BREAK") {
+        let breakStartTime = null;
+        if (data?.breakStartTime) {
+          breakStartTime = data.breakStartTime;
+        } else if (data?.break_start_time) {
+          breakStartTime = data.break_start_time;
+        } else if (data?.currentBreakStart) {
+          breakStartTime = data.currentBreakStart;
+        }
+        
+        if (breakStartTime) {
+          const breakStartMs = new Date(breakStartTime).getTime();
+          setLocalBreakStart(breakStartMs);
+          // Save to sessionStorage for persistence across route changes
+          sessionStorage.setItem('breakStartTime', breakStartMs.toString());
+          sessionStorage.setItem('breakStatus', 'BREAK');
+          sessionStorage.setItem('breakTotal', totalBreak.toString());
+        } else if (!localBreakStart) {
+          // Check sessionStorage for saved break data
+          const savedBreakStart = sessionStorage.getItem('breakStartTime');
+          const savedBreakStatus = sessionStorage.getItem('breakStatus');
+          const savedBreakTotal = sessionStorage.getItem('breakTotal');
+          
+          if (savedBreakStart && savedBreakStatus === 'BREAK') {
+            console.log("Restoring break from sessionStorage");
+            setLocalBreakStart(parseInt(savedBreakStart));
+            if (savedBreakTotal) {
+              setLastBreakTotal(parseInt(savedBreakTotal));
+              setBreakTime(parseInt(savedBreakTotal));
+            }
+          } else {
+            // If no break start time from server, use current time as fallback
+            console.warn("No break start time from server, using local time");
+            const now = Date.now();
+            setLocalBreakStart(now);
+            sessionStorage.setItem('breakStartTime', now.toString());
+            sessionStorage.setItem('breakStatus', 'BREAK');
+            sessionStorage.setItem('breakTotal', totalBreak.toString());
+          }
+        }
+      } else {
+        // Clear sessionStorage when not in break
+        setLocalBreakStart(null);
+        sessionStorage.removeItem('breakStartTime');
+        sessionStorage.removeItem('breakStatus');
+        sessionStorage.removeItem('breakTotal');
+      }
+      
     } catch (error) {
       console.error("Failed to load attendance:", error);
       setStatus("NOT_LOGGED_IN");
       setAttendanceData(null);
+      setLocalBreakStart(null);
+      sessionStorage.removeItem('breakStartTime');
+      sessionStorage.removeItem('breakStatus');
+      sessionStorage.removeItem('breakTotal');
     }
   }, []);
 
   // ================= CALCULATE REAL-TIME TIMES =================
   const calculateRealTime = useCallback(() => {
-    if (!attendanceData) {
+    if (!attendanceData && status !== "BREAK") {
       console.log("No attendance data available");
       return;
     }
 
-    const now = new Date().getTime();
+    const now = Date.now();
     
-    // Check for checkInTime in different possible formats
+    // Get check-in time
     let checkInTime = null;
-    if (attendanceData.checkInTime) {
+    if (attendanceData?.checkInTime) {
       checkInTime = new Date(attendanceData.checkInTime).getTime();
-    } else if (attendanceData.check_in_time) {
+    } else if (attendanceData?.check_in_time) {
       checkInTime = new Date(attendanceData.check_in_time).getTime();
-    } else if (attendanceData.checkinTime) {
+    } else if (attendanceData?.checkinTime) {
       checkInTime = new Date(attendanceData.checkinTime).getTime();
     }
     
     if (!checkInTime) {
-      console.log("No check-in time found in attendance data:", attendanceData);
+      console.log("No check-in time found");
       return;
     }
 
-    console.log("Calculating real-time:", { status, checkInTime, now }); // Debug log
+    // Get total break time from server or last saved total
+    let totalBreakTimeFromServer = lastBreakTotal;
+    if (attendanceData?.totalBreakTime !== undefined && attendanceData?.totalBreakTime !== null) {
+      totalBreakTimeFromServer = attendanceData.totalBreakTime;
+    } else if (attendanceData?.total_break_time !== undefined && attendanceData?.total_break_time !== null) {
+      totalBreakTimeFromServer = attendanceData.total_break_time;
+    }
+
+    // Calculate total elapsed time since check-in
+    const totalElapsed = Math.floor((now - checkInTime) / 1000);
 
     if (status === "WORKING") {
-      // Calculate total elapsed time since check-in
-      const totalElapsed = Math.floor((now - checkInTime) / 1000);
-      
-      // Get total break time (handle different field names)
-      let totalBreakTimeValue = 0;
-      if (attendanceData.totalBreakTime !== undefined) {
-        totalBreakTimeValue = attendanceData.totalBreakTime || 0;
-      } else if (attendanceData.total_break_time !== undefined) {
-        totalBreakTimeValue = attendanceData.total_break_time || 0;
-      }
-      
-      // Working time = total elapsed - break time
-      const currentWorkingTime = Math.max(0, totalElapsed - totalBreakTimeValue);
+      // Working time = total elapsed - total break time
+      const currentWorkingTime = Math.max(0, totalElapsed - totalBreakTimeFromServer);
       setWorkingTime(currentWorkingTime);
+      setBreakTime(totalBreakTimeFromServer);
       
-      // Keep break time as is
-      setBreakTime(totalBreakTimeValue);
-      
-      console.log("Working time updated:", currentWorkingTime); // Debug log
+      console.log("WORKING - Working:", currentWorkingTime, "Break:", totalBreakTimeFromServer);
     } 
     else if (status === "BREAK") {
-      // Calculate total elapsed time since check-in
-      const totalElapsed = Math.floor((now - checkInTime) / 1000);
+      // Get break start time (from state, server, or sessionStorage)
+      let breakStartTime = localBreakStart;
       
-      // Get total break time before current break
-      let totalBreakTimeValue = 0;
-      if (attendanceData.totalBreakTime !== undefined) {
-        totalBreakTimeValue = attendanceData.totalBreakTime || 0;
-      } else if (attendanceData.total_break_time !== undefined) {
-        totalBreakTimeValue = attendanceData.total_break_time || 0;
-      }
-      
-      // Calculate working time (excluding current break)
-      const workingTimeWithoutCurrentBreak = Math.max(0, totalElapsed - totalBreakTimeValue);
-      setWorkingTime(workingTimeWithoutCurrentBreak);
-      
-      // Calculate current break time including current break session
-      let breakStartTime = null;
-      if (attendanceData.breakStartTime) {
+      // Try to get from server data if local is not available
+      if (!breakStartTime && attendanceData?.breakStartTime) {
         breakStartTime = new Date(attendanceData.breakStartTime).getTime();
-      } else if (attendanceData.break_start_time) {
+      } else if (!breakStartTime && attendanceData?.break_start_time) {
         breakStartTime = new Date(attendanceData.break_start_time).getTime();
-      } else if (attendanceData.currentBreakStart) {
+      } else if (!breakStartTime && attendanceData?.currentBreakStart) {
         breakStartTime = new Date(attendanceData.currentBreakStart).getTime();
       }
       
+      // Check sessionStorage as last resort
+      if (!breakStartTime) {
+        const savedBreakStart = sessionStorage.getItem('breakStartTime');
+        if (savedBreakStart) {
+          breakStartTime = parseInt(savedBreakStart);
+          console.log("Using break start from sessionStorage:", new Date(breakStartTime));
+        }
+      }
+      
       if (breakStartTime) {
+        // Calculate current break session duration
         const currentBreakDuration = Math.floor((now - breakStartTime) / 1000);
-        const totalBreakTime = totalBreakTimeValue + currentBreakDuration;
+        // Total break time = previous break time + current break session
+        const totalBreakTime = totalBreakTimeFromServer + currentBreakDuration;
+        
+        // Working time = total elapsed - total break time (including current break)
+        const currentWorkingTime = Math.max(0, totalElapsed - totalBreakTime);
+        
+        setWorkingTime(currentWorkingTime);
         setBreakTime(totalBreakTime);
-        console.log("Break time updated:", totalBreakTime); // Debug log
+        
+        // Update sessionStorage with latest break total
+        sessionStorage.setItem('breakTotal', totalBreakTimeFromServer.toString());
+        
+        console.log("BREAK - Working:", currentWorkingTime, "Break:", totalBreakTime, "Current session:", currentBreakDuration);
       } else {
-        setBreakTime(totalBreakTimeValue);
+        console.error("No break start time available for BREAK state");
+        // Fallback: just show server values
+        setWorkingTime(Math.max(0, totalElapsed - totalBreakTimeFromServer));
+        setBreakTime(totalBreakTimeFromServer);
       }
     }
-  }, [status, attendanceData]);
+  }, [status, attendanceData, localBreakStart, lastBreakTotal]);
 
   // ================= TIMER EFFECT =================
   useEffect(() => {
@@ -148,25 +214,15 @@ function UserDashboard() {
     }
 
     // Start new timer if user is checked in
-    if ((status === "WORKING" || status === "BREAK") && attendanceData) {
-      // Check if there's a check-in time
-      let hasCheckInTime = false;
-      if (attendanceData.checkInTime || attendanceData.check_in_time || attendanceData.checkinTime) {
-        hasCheckInTime = true;
-      }
+    if ((status === "WORKING" || status === "BREAK") && (attendanceData || localBreakStart)) {
+      console.log("Starting timer for status:", status);
+      // Calculate immediately
+      calculateRealTime();
       
-      if (hasCheckInTime) {
-        console.log("Starting timer for status:", status);
-        // Calculate immediately
+      // Update every second
+      timerRef.current = setInterval(() => {
         calculateRealTime();
-        
-        // Update every second
-        timerRef.current = setInterval(() => {
-          calculateRealTime();
-        }, 1000);
-      } else {
-        console.log("No check-in time found, timer not started");
-      }
+      }, 1000);
     }
 
     // Cleanup on unmount or status change
@@ -176,7 +232,7 @@ function UserDashboard() {
         timerRef.current = null;
       }
     };
-  }, [status, attendanceData, calculateRealTime]);
+  }, [status, attendanceData, localBreakStart, calculateRealTime]);
 
   // ================= INITIAL LOAD =================
   useEffect(() => {
@@ -189,25 +245,105 @@ function UserDashboard() {
     return () => clearInterval(refreshInterval);
   }, [loadStatus]);
 
+  // Save break data before page unload (when changing routes)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (status === "BREAK" && localBreakStart) {
+        sessionStorage.setItem('breakStartTime', localBreakStart.toString());
+        sessionStorage.setItem('breakStatus', 'BREAK');
+        sessionStorage.setItem('breakTotal', lastBreakTotal.toString());
+        sessionStorage.setItem('attendanceData', JSON.stringify(attendanceData));
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [status, localBreakStart, lastBreakTotal, attendanceData]);
+
   // ================= ACTION HANDLER =================
-  const runAction = async (fn, msgText) => {
+  const runAction = async (fn, msgText, actionType) => {
     if (loading) return;
     setLoading(true);
 
     try {
+      console.log(`Executing ${actionType}...`);
       const res = await fn();
 
-      if (res?.success === false) {
-        message.warning(res?.message || "Action failed");
+      console.log(`${actionType} response:`, res);
+
+      // Check if the response indicates an error
+      if (res?.success === false || res?.error) {
+        message.warning(res?.message || res?.error || "Action failed");
         await loadStatus();
         return;
       }
 
       message.success(msgText);
-      await loadStatus();
+      
+      // Special handling for break start
+      if (actionType === "breakStart") {
+        // Set local break start time immediately for real-time updates
+        const breakStartTime = Date.now();
+        setLocalBreakStart(breakStartTime);
+        setLastBreakTotal(breakTime); // Save current break total
+        
+        // Save to sessionStorage for persistence
+        sessionStorage.setItem('breakStartTime', breakStartTime.toString());
+        sessionStorage.setItem('breakStatus', 'BREAK');
+        sessionStorage.setItem('breakTotal', breakTime.toString());
+        
+        console.log("Set local break start time:", new Date(breakStartTime));
+        
+        // Update status locally for immediate UI response
+        setStatus("BREAK");
+      }
+      
+      // Special handling for break end
+      if (actionType === "breakEnd") {
+        // Clear local break start and sessionStorage
+        setLocalBreakStart(null);
+        sessionStorage.removeItem('breakStartTime');
+        sessionStorage.removeItem('breakStatus');
+        sessionStorage.removeItem('breakTotal');
+        
+        // Update status locally
+        setStatus("WORKING");
+      }
+      
+      // Special handling for check in
+      if (actionType === "checkIn") {
+        setStatus("WORKING");
+        sessionStorage.removeItem('breakStartTime');
+        sessionStorage.removeItem('breakStatus');
+        sessionStorage.removeItem('breakTotal');
+      }
+      
+      // Special handling for check out
+      if (actionType === "checkOut") {
+        setStatus("NOT_LOGGED_IN");
+        setLocalBreakStart(null);
+        sessionStorage.removeItem('breakStartTime');
+        sessionStorage.removeItem('breakStatus');
+        sessionStorage.removeItem('breakTotal');
+        sessionStorage.removeItem('attendanceData');
+        
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      }
+      
+      // Wait a moment and reload from server to sync
+      setTimeout(async () => {
+        await loadStatus();
+        calculateRealTime();
+      }, 500);
+      
     } catch (err) {
-      message.error(err?.message || "Request failed");
-      console.error("Action error:", err);
+      console.error(`${actionType} error:`, err);
+      message.error(err?.response?.data?.message || err?.message || "Request failed");
+      // Reload status even on error to ensure consistency
+      await loadStatus();
     } finally {
       setLoading(false);
     }
@@ -309,7 +445,7 @@ function UserDashboard() {
               <Button
                 type="primary"
                 loading={loading}
-                onClick={() => runAction(checkIn, "✅ Checked in successfully")}
+                onClick={() => runAction(checkIn, "✅ Checked in successfully", "checkIn")}
                 style={{
                   borderRadius: 10,
                   height: 42,
@@ -324,7 +460,7 @@ function UserDashboard() {
               <>
                 <Button
                   loading={loading}
-                  onClick={() => runAction(breakStart, "☕ Break started")}
+                  onClick={() => runAction(breakStart, "☕ Break started", "breakStart")}
                   style={{
                     borderRadius: 10,
                     height: 42,
@@ -339,7 +475,7 @@ function UserDashboard() {
                 <Button
                   danger
                   loading={loading}
-                  onClick={() => runAction(checkOut, "👋 Checked out successfully")}
+                  onClick={() => runAction(checkOut, "👋 Checked out successfully", "checkOut")}
                   style={{ borderRadius: 10, height: 42 }}
                 >
                   Check Out
@@ -352,7 +488,7 @@ function UserDashboard() {
                 <Button
                   type="primary"
                   loading={loading}
-                  onClick={() => runAction(breakEnd, "▶️ Resumed work")}
+                  onClick={() => runAction(breakEnd, "▶️ Resumed work", "breakEnd")}
                   style={{ borderRadius: 10, height: 42 }}
                 >
                   Resume
@@ -361,7 +497,7 @@ function UserDashboard() {
                 <Button
                   danger
                   loading={loading}
-                  onClick={() => runAction(checkOut, "👋 Checked out successfully")}
+                  onClick={() => runAction(checkOut, "👋 Checked out successfully", "checkOut")}
                   style={{ borderRadius: 10, height: 42 }}
                 >
                   Check Out

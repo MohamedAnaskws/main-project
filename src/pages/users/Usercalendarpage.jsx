@@ -249,6 +249,18 @@ const UserCalendar = () => {
   const onSelect = (date) => {
     const formatted = date.format("YYYY-MM-DD");
     const schedule = workScheduleMap.get(formatted);
+    
+    // Check if there's already a pending or approved leave on this date
+    const existingLeave = leaves.find(
+      (l) => 
+        (l.leave_date === formatted || l.from_date === formatted) && 
+        (l.status === "PENDING" || l.status === "APPROVED")
+    );
+    
+    if (existingLeave) {
+      message.warning("You already have a pending or approved leave on this date");
+      return;
+    }
 
     if (schedule?.isHoliday) {
       message.warning("Cannot apply leave on a holiday");
@@ -334,51 +346,69 @@ const UserCalendar = () => {
   // ================= CALENDAR DATE CELL RENDER =================
   const dateCellRender = (value) => {
     const dateStr = value.format("YYYY-MM-DD");
-    const dayLeaves = leaves.filter(
-      (l) => l.leave_date === dateStr || l.from_date === dateStr,
+    
+    // Separate leaves by status
+    const approvedLeaves = leaves.filter(
+      (l) => (l.leave_date === dateStr || l.from_date === dateStr) && l.status === "APPROVED"
     );
+    const pendingLeaves = leaves.filter(
+      (l) => (l.leave_date === dateStr || l.from_date === dateStr) && (l.status === "PENDING" || l.status === "pending")
+    );
+    const rejectedLeaves = leaves.filter(
+      (l) => (l.leave_date === dateStr || l.from_date === dateStr) && (l.status === "REJECTED" || l.status === "rejected")
+    );
+    
     const holiday = holidayMap.get(dateStr);
     const schedule = workScheduleMap.get(dateStr);
     const isWorkScheduleHoliday = schedule?.isHoliday === true;
     const canWork = schedule?.canWork;
+    
+    // Check if it's a holiday (either from work schedule or holiday list)
+    const isHoliday = isWorkScheduleHoliday || holiday;
 
     return (
       <div style={{ minHeight: 80, padding: "4px 0" }}>
         <div style={{ fontWeight: 500, marginBottom: 4 }}>{value.date()}</div>
 
-        {schedule && !isWorkScheduleHoliday && canWork === true && (
-          <Tag
-            color="#52c41a"
-            style={{
-              fontSize: 10,
-              borderRadius: 4,
-              marginBottom: 4,
-              marginRight: 0,
-              display: "block",
-              textAlign: "center",
-            }}
-          >
-            ✅ Work
-          </Tag>
+        {/* Only show Work/Off tags if it's NOT a holiday */}
+        {!isHoliday && (
+          <>
+            {schedule && canWork === true && (
+              <Tag
+                color="#52c41a"
+                style={{
+                  fontSize: 10,
+                  borderRadius: 4,
+                  marginBottom: 4,
+                  marginRight: 0,
+                  display: "block",
+                  textAlign: "center",
+                }}
+              >
+                ✅ Work
+              </Tag>
+            )}
+
+            {schedule && canWork === false && (
+              <Tag
+                color="#fa8c16"
+                style={{
+                  fontSize: 10,
+                  borderRadius: 4,
+                  marginBottom: 4,
+                  marginRight: 0,
+                  display: "block",
+                  textAlign: "center",
+                }}
+              >
+                🚫 Off
+              </Tag>
+            )}
+          </>
         )}
 
-        {schedule && canWork === false && !isWorkScheduleHoliday && (
-          <Tag
-            color="#fa8c16"
-            style={{
-              fontSize: 10,
-              borderRadius: 4,
-              marginBottom: 4,
-              marginRight: 0,
-              display: "block",
-              textAlign: "center",
-            }}
-          >
-            🚫 Off
-          </Tag>
-        )}
-
-        {(isWorkScheduleHoliday || holiday) && (
+        {/* Show Holiday Tag (always show on holidays) */}
+        {isHoliday && (
           <Tag
             color="#eb2f96"
             style={{
@@ -390,11 +420,12 @@ const UserCalendar = () => {
               textAlign: "center",
             }}
           >
-            🎉 {holiday?.holiday_name || "Holiday"}
+            🎉 {holiday?.holiday_name || (isWorkScheduleHoliday ? "Company Holiday" : "Holiday")}
           </Tag>
         )}
 
-        {dayLeaves.slice(0, 2).map((leave) => {
+        {/* Show Rejected Leaves First (with red background) */}
+        {rejectedLeaves.slice(0, 2).map((leave) => {
           const status = getStatus(leave.status);
           const categoryConfig = getLeaveCategoryConfig(leave.leave_category);
           const stepInfo = getStepInfo(leave.current_step);
@@ -402,7 +433,7 @@ const UserCalendar = () => {
           return (
             <div key={leave.id} style={{ marginBottom: 4 }}>
               <Tooltip
-                title={`${leave.leave_category} - Step: ${stepInfo.name} - Click for details`}
+                title={`${leave.leave_category} - REJECTED - Click for details`}
               >
                 <Tag
                   style={{
@@ -411,9 +442,47 @@ const UserCalendar = () => {
                     fontSize: 10,
                     borderRadius: 4,
                     cursor: "pointer",
-                    backgroundColor: categoryConfig.bg,
-                    borderColor: categoryConfig.color,
-                    color: categoryConfig.color,
+                    backgroundColor: "#fff1f0", // Light red background
+                    borderColor: "#ff4d4f",
+                    color: "#ff4d4f",
+                    display: "block",
+                    textAlign: "center",
+                    textDecoration: "line-through", // Strike through for rejected
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLeave(leave);
+                    setViewModalOpen(true);
+                  }}
+                >
+                  ❌ REJECTED: {leave.leave_category}
+                </Tag>
+              </Tooltip>
+            </div>
+          );
+        })}
+
+        {/* Show Pending Leaves */}
+        {pendingLeaves.slice(0, 2).map((leave) => {
+          const status = getStatus(leave.status);
+          const categoryConfig = getLeaveCategoryConfig(leave.leave_category);
+          const stepInfo = getStepInfo(leave.current_step);
+
+          return (
+            <div key={leave.id} style={{ marginBottom: 4 }}>
+              <Tooltip
+                title={`${leave.leave_category} - Pending at ${stepInfo.name} - Click for details`}
+              >
+                <Tag
+                  style={{
+                    marginBottom: 4,
+                    marginRight: 0,
+                    fontSize: 10,
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    backgroundColor: "#fffbe6", // Light yellow background
+                    borderColor: "#faad14",
+                    color: "#faad14",
                     display: "block",
                     textAlign: "center",
                   }}
@@ -423,19 +492,56 @@ const UserCalendar = () => {
                     setViewModalOpen(true);
                   }}
                 >
-                  {categoryConfig.icon} {leave.leave_category} ({stepInfo.icon}{" "}
-                  {stepInfo.name})
+                  ⏳ PENDING: {leave.leave_category} ({stepInfo.icon})
                 </Tag>
               </Tooltip>
             </div>
           );
         })}
-        {dayLeaves.length > 2 && (
+
+        {/* Show Approved Leaves */}
+        {approvedLeaves.slice(0, 2).map((leave) => {
+          const status = getStatus(leave.status);
+          const categoryConfig = getLeaveCategoryConfig(leave.leave_category);
+          const stepInfo = getStepInfo(leave.current_step);
+
+          return (
+            <div key={leave.id} style={{ marginBottom: 4 }}>
+              <Tooltip
+                title={`${leave.leave_category} - APPROVED - Click for details`}
+              >
+                <Tag
+                  style={{
+                    marginBottom: 4,
+                    marginRight: 0,
+                    fontSize: 10,
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    backgroundColor: "#f6ffed", // Light green background
+                    borderColor: "#52c41a",
+                    color: "#52c41a",
+                    display: "block",
+                    textAlign: "center",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLeave(leave);
+                    setViewModalOpen(true);
+                  }}
+                >
+                  ✅ {leave.leave_category}
+                </Tag>
+              </Tooltip>
+            </div>
+          );
+        })}
+        
+        {[...approvedLeaves, ...pendingLeaves, ...rejectedLeaves].length > 2 && (
           <Text
             type="secondary"
             style={{ fontSize: 10, display: "block", textAlign: "center" }}
           >
-            +{dayLeaves.length - 2} more
+            +{[...approvedLeaves, ...pendingLeaves, ...rejectedLeaves].length - 2} more
           </Text>
         )}
       </div>
@@ -559,7 +665,6 @@ const UserCalendar = () => {
           />
         )}
 
-        {/* Calendar Section */}
         <Card
           style={{
             borderRadius: 12,
@@ -615,8 +720,6 @@ const UserCalendar = () => {
               <Option value="General">📋 General Leave</Option>
               <Option value="Sick">🤒 Sick Leave</Option>
               <Option value="Casual">🏖️ Casual Leave</Option>
-              <Option value="Annual">🌴 Annual Leave</Option>
-              <Option value="Emergency">🚨 Emergency Leave</Option>
             </Select>
           </div>
 
@@ -630,8 +733,7 @@ const UserCalendar = () => {
             />
           </div>
         </Modal>
-
-        {/* View Leave Modal with Current Step Highlight */}
+        
         <Modal
           title={
             <Space>
@@ -641,11 +743,6 @@ const UserCalendar = () => {
           }
           open={viewModalOpen}
           onCancel={() => setViewModalOpen(false)}
-          footer={[
-            <Button key="close" onClick={() => setViewModalOpen(false)}>
-              Close
-            </Button>,
-          ]}
           centered
           width={600}
         >
@@ -795,20 +892,6 @@ const UserCalendar = () => {
                             },
                           ]}
                         />
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: 12,
-                          padding: 8,
-                          background: "#fff",
-                          borderRadius: 6,
-                        }}
-                      >
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          <InfoCircleOutlined />{" "}
-                          {getStepInfo(selectedLeave.current_step).description}
-                        </Text>
                       </div>
                     </Space>
                   </Card>
