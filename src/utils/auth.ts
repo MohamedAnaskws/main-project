@@ -28,25 +28,26 @@ export const setAuth = (data: { access_token: string; user: any }) => {
 };
 
 // ================= GET TOKEN =================
-let cachedToken: string | undefined = undefined;
+let cachedToken: string | null = null;
 let tokenCacheTime: number = 0;
 const TOKEN_CACHE_DURATION = 5000; // 5 seconds cache
 
-export const getToken = (): string | undefined => {
+export const getToken = (): string | null => {
   // Return cached token if fresh
   const now = Date.now();
-  if (cachedToken && (now - tokenCacheTime) < TOKEN_CACHE_DURATION) {
+  if (cachedToken !== null && (now - tokenCacheTime) < TOKEN_CACHE_DURATION) {
     return cachedToken;
   }
   
   // Get from sources - try localStorage first (faster)
-  let token = localStorage.getItem("access_token");
+  let token: string | null = localStorage.getItem("access_token");
   if (!token) {
-    token = Cookies.get("access_token");
+    const cookieToken = Cookies.get("access_token");
+    token = cookieToken || null;
   }
   
   // Update cache
-  cachedToken = token || undefined;
+  cachedToken = token;
   tokenCacheTime = now;
   
   return cachedToken;
@@ -55,7 +56,7 @@ export const getToken = (): string | undefined => {
 // ================= GET USER =================
 let cachedUser: any = null;
 let userCacheTime: number = 0;
-const USER_CACHE_DURATION = 300000; // 5 MINUTES - increased from 1 second!
+const USER_CACHE_DURATION = 300000; // 5 MINUTES
 
 export const getUser = (): any | null => {
   // Return cached user if fresh
@@ -121,7 +122,7 @@ export const getAuthHeaders = (): HeadersInit => {
 
 // ================= FORCE REFRESH AUTH CACHE =================
 export const refreshAuthCache = (): void => {
-  cachedToken = undefined;
+  cachedToken = null;
   cachedUser = null;
   tokenCacheTime = 0;
   userCacheTime = 0;
