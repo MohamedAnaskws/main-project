@@ -10,5 +10,8 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "vars": {
+    "API_BASE_URL": "https://stagnant-diner-mundane.ngrok-free.dev"
+  }
 }
