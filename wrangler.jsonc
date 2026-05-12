@@ -15,8 +15,4 @@
     "nodejs_compat"
   ],
 
-  "vars": {
-    "VITE_API_URL": "https://stagnant-diner-mundane.ngrok-free.dev",
-    "VITE_WS_URL": "wss://stagnant-diner-mundane.ngrok-free.dev"
-  }
 }
